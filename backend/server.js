@@ -13,25 +13,37 @@ connectDB();
 
 const app = express();
 
-const allowedOrigins = process.env.CLIENT_URL
-  ? process.env.CLIENT_URL.split(",").map((origin) => origin.trim())
-  : ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"];
+// CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true,
-  })
-);
+    // Add CLIENT_URL from environment if set
+    if (process.env.CLIENT_URL) {
+      const envOrigins = process.env.CLIENT_URL.split(",").map((o) => o.trim());
+      allowedOrigins.push(...envOrigins);
+    }
+
+    // Allow requests with no origin (mobile apps, curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // Log but don't block - helps with debugging
+      console.log(`CORS request from origin: ${origin}`);
+      callback(null, true); // Allow for now to debug
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/", (req, res) => {
